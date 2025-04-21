@@ -1,8 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { getOptimizedImageUrl, preloadImage } from "../utils/imageOptimizer";
 
 const ImagePreloader = ({ doctors }) => {
 	// Only preload the first 6 images (2 rows in desktop view)
 	const imagesToPreload = doctors.slice(0, 6);
+
+	useEffect(() => {
+		// Preload optimized images
+		imagesToPreload.forEach((doctor) => {
+			const optimizedUrl = getOptimizedImageUrl(doctor.photo, 400);
+			preloadImage(optimizedUrl);
+		});
+	}, [imagesToPreload]);
 
 	return (
 		<div
@@ -14,7 +23,7 @@ const ImagePreloader = ({ doctors }) => {
 					key={doctor.id}
 					rel='preload'
 					as='image'
-					href={doctor.photo}
+					href={getOptimizedImageUrl(doctor.photo, 400)}
 					crossOrigin='anonymous'
 				/>
 			))}

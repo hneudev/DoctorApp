@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 
-const FilterComponent = ({ specialties, currentFilter, onFilterChange, id }) => {
+const FilterComponent = memo(({ specialties, currentFilter, onFilterChange, id }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [focusedOptionIndex, setFocusedOptionIndex] = useState(-1);
 	const dropdownRef = useRef(null);
@@ -15,72 +15,80 @@ const FilterComponent = ({ specialties, currentFilter, onFilterChange, id }) => 
 		optionsRef.current = optionsRef.current.slice(0, specialties.length + 1); // +1 for "All Specialties"
 	}, [specialties]);
 
-	const handleSpecialtyToggle = (specialty) => {
-		let newFilter;
-		if (specialty === "") {
-			// Clicking "All Specialties"
-			newFilter = [""];
-		} else if (currentFilter.includes("")) {
-			// Moving from "All" to specific specialty
-			newFilter = [specialty];
-		} else if (currentFilter.includes(specialty)) {
-			// Removing a specialty
-			newFilter = currentFilter.filter((s) => s !== specialty);
-			// If no specialties selected, default to "All"
-			if (newFilter.length === 0) newFilter = [""];
-		} else {
-			// Adding a specialty
-			newFilter = [...currentFilter.filter((s) => s !== ""), specialty];
-		}
-		onFilterChange(newFilter);
-	};
+	// Memoize specialty toggle handler
+	const handleSpecialtyToggle = useCallback(
+		(specialty) => {
+			let newFilter;
+			if (specialty === "") {
+				// Clicking "All Specialties"
+				newFilter = [""];
+			} else if (currentFilter.includes("")) {
+				// Moving from "All" to specific specialty
+				newFilter = [specialty];
+			} else if (currentFilter.includes(specialty)) {
+				// Removing a specialty
+				newFilter = currentFilter.filter((s) => s !== specialty);
+				// If no specialties selected, default to "All"
+				if (newFilter.length === 0) newFilter = [""];
+			} else {
+				// Adding a specialty
+				newFilter = [...currentFilter.filter((s) => s !== ""), specialty];
+			}
+			onFilterChange(newFilter);
+		},
+		[currentFilter, onFilterChange]
+	);
 
-	const handleKeyDown = (e) => {
-		if (!isOpen && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
-			e.preventDefault();
-			setIsOpen(true);
-			setFocusedOptionIndex(0);
-			return;
-		}
-
-		if (!isOpen) return;
-
-		switch (e.key) {
-			case "Escape":
+	// Memoize keyboard navigation handler
+	const handleKeyDown = useCallback(
+		(e) => {
+			if (!isOpen && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
 				e.preventDefault();
-				setIsOpen(false);
-				setFocusedOptionIndex(-1);
-				dropdownRef.current?.focus();
-				break;
-			case "ArrowDown":
-				e.preventDefault();
-				setFocusedOptionIndex((prev) => Math.min(prev + 1, specialties.length));
-				break;
-			case "ArrowUp":
-				e.preventDefault();
-				setFocusedOptionIndex((prev) => Math.max(prev - 1, 0));
-				break;
-			case "Home":
-				e.preventDefault();
+				setIsOpen(true);
 				setFocusedOptionIndex(0);
-				break;
-			case "End":
-				e.preventDefault();
-				setFocusedOptionIndex(specialties.length);
-				break;
-			case "Enter":
-			case " ":
-				e.preventDefault();
-				if (focusedOptionIndex === 0) {
-					handleSpecialtyToggle("");
-				} else {
-					handleSpecialtyToggle(specialties[focusedOptionIndex - 1]);
-				}
-				break;
-			default:
 				return;
-		}
-	};
+			}
+
+			if (!isOpen) return;
+
+			switch (e.key) {
+				case "Escape":
+					e.preventDefault();
+					setIsOpen(false);
+					setFocusedOptionIndex(-1);
+					dropdownRef.current?.focus();
+					break;
+				case "ArrowDown":
+					e.preventDefault();
+					setFocusedOptionIndex((prev) => Math.min(prev + 1, specialties.length));
+					break;
+				case "ArrowUp":
+					e.preventDefault();
+					setFocusedOptionIndex((prev) => Math.max(prev - 1, 0));
+					break;
+				case "Home":
+					e.preventDefault();
+					setFocusedOptionIndex(0);
+					break;
+				case "End":
+					e.preventDefault();
+					setFocusedOptionIndex(specialties.length);
+					break;
+				case "Enter":
+				case " ":
+					e.preventDefault();
+					if (focusedOptionIndex === 0) {
+						handleSpecialtyToggle("");
+					} else {
+						handleSpecialtyToggle(specialties[focusedOptionIndex - 1]);
+					}
+					break;
+				default:
+					return;
+			}
+		},
+		[isOpen, focusedOptionIndex, specialties, handleSpecialtyToggle]
+	);
 
 	// Focus management
 	useEffect(() => {
@@ -102,10 +110,11 @@ const FilterComponent = ({ specialties, currentFilter, onFilterChange, id }) => 
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
-	const getDisplayText = () => {
+	// Memoize display text
+	const displayText = useMemo(() => {
 		if (currentFilter.includes("")) return "All Specialties";
 		return `Selected: ${currentFilter.join(", ")}`;
-	};
+	}, [currentFilter]);
 
 	return (
 		<div
@@ -124,8 +133,8 @@ const FilterComponent = ({ specialties, currentFilter, onFilterChange, id }) => 
 				aria-expanded={isOpen}
 				aria-labelledby={labelId}
 				aria-controls={listboxId}
-				aria-label={`Filter doctors by ${getDisplayText()}. Currently showing ${getDisplayText()}`}>
-				<span className='block truncate text-gray-900'>{getDisplayText()}</span>
+				aria-label={`Filter doctors by ${displayText}. Currently showing ${displayText}`}>
+				<span className='block truncate text-gray-900'>{displayText}</span>
 				<svg
 					className={`ml-2 h-5 w-5 text-gray-900 transition-transform duration-200 ${
 						isOpen ? "transform rotate-180" : ""
@@ -210,7 +219,7 @@ const FilterComponent = ({ specialties, currentFilter, onFilterChange, id }) => 
 			</div>
 		</div>
 	);
-};
+});
 
 // Add prop types validation
 FilterComponent.defaultProps = {

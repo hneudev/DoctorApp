@@ -29,7 +29,7 @@ const LoadingIndicator = memo(({ isLoading }) =>
 );
 
 const DoctorDirectory = ({ onInitiateBooking }) => {
-	const directoryId = useMemo(() => generateUniqueId("doctor-directory"), []);
+	const directoryId = useMemo(() => `directory-${Math.random().toString(36).substr(2, 9)}`, []);
 	const [selectedSpecialties, setSelectedSpecialties] = useState([""]);
 	const [focusedCardIndex, setFocusedCardIndex] = useState(-1);
 	const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
@@ -66,24 +66,24 @@ const DoctorDirectory = ({ onInitiateBooking }) => {
 	}, [displayedDoctors]);
 
 	// Optimize the intersection observer callback
-	const handleObserver = useCallback(
+	const handleIntersection = useCallback(
 		(entries) => {
-			const target = entries[0];
-			if (target.isIntersecting && !isLoading && displayCount < filteredDoctors.length) {
+			const [entry] = entries;
+			if (entry.isIntersecting && !isLoading && displayCount < filteredDoctors.length) {
 				setIsLoading(true);
-				// Use requestAnimationFrame for smoother loading
-				requestAnimationFrame(() => {
+				// Simulate loading delay
+				setTimeout(() => {
 					setDisplayCount((prev) => Math.min(prev + ITEMS_PER_PAGE, filteredDoctors.length));
 					setIsLoading(false);
-				});
+				}, 500);
 			}
 		},
-		[displayCount, filteredDoctors.length, isLoading]
+		[isLoading, displayCount, filteredDoctors.length]
 	);
 
 	// Set up intersection observer
 	useEffect(() => {
-		const observer = new IntersectionObserver(handleObserver, {
+		const observer = new IntersectionObserver(handleIntersection, {
 			root: null,
 			rootMargin: "20px",
 			threshold: 0.1,
@@ -100,7 +100,7 @@ const DoctorDirectory = ({ onInitiateBooking }) => {
 				observerRef.current.disconnect();
 			}
 		};
-	}, [handleObserver]);
+	}, [handleIntersection]);
 
 	// Handle keyboard navigation
 	const handleKeyDown = (e, index) => {
@@ -152,25 +152,29 @@ const DoctorDirectory = ({ onInitiateBooking }) => {
 
 	// Memoize the grid cell render function
 	const renderGridCell = useCallback(
-		(doctor, index, rowIndex) => (
-			<div
-				key={doctor.id}
-				ref={(el) => (cardRefs.current[rowIndex * 3 + index] = el)}
-				tabIndex={0}
-				role='gridcell'
-				className={`outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${
-					focusedCardIndex === rowIndex * 3 + index ? "ring-2 ring-blue-500 ring-offset-2" : ""
-				}`}
-				onFocus={() => handleFocus(rowIndex * 3 + index)}
-				onBlur={handleBlur}
-				aria-label={`Doctor card ${rowIndex * 3 + index + 1} of ${displayedDoctors.length}`}>
-				<MemoizedDoctorCard
-					doctor={doctor}
-					onBookClick={onInitiateBooking}
-					isPriority={rowIndex * 3 + index < 6}
-				/>
-			</div>
-		),
+		(doctor, index, rowIndex) => {
+			const cellId = `${directoryId}-cell-${rowIndex}-${index}`;
+			return (
+				<div
+					key={cellId}
+					role='gridcell'
+					tabIndex={0}
+					id={cellId}
+					ref={(el) => (cardRefs.current[rowIndex * 3 + index] = el)}
+					className={`outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${
+						focusedCardIndex === rowIndex * 3 + index ? "ring-2 ring-blue-500 ring-offset-2" : ""
+					}`}
+					onFocus={() => handleFocus(rowIndex * 3 + index)}
+					onBlur={handleBlur}
+					aria-label={`Doctor card ${rowIndex * 3 + index + 1} of ${displayedDoctors.length}`}>
+					<MemoizedDoctorCard
+						doctor={doctor}
+						onBookClick={onInitiateBooking}
+						isPriority={rowIndex * 3 + index < 6}
+					/>
+				</div>
+			);
+		},
 		[focusedCardIndex, displayedDoctors.length, onInitiateBooking, handleFocus, handleBlur]
 	);
 

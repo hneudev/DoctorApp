@@ -1,10 +1,38 @@
 import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
 import DoctorDirectory from "./components/DoctorDirectory";
 import AppointmentsSummary from "./components/AppointmentsSummary";
+import { preloadImage } from "./utils/imageOptimizer";
+import { preloadFonts, addFontDisplaySwap } from "./utils/fontOptimizer";
+import { mockDoctors } from "./data/mockData";
 
-// Lazy load modal components
-const BookingModal = lazy(() => import("./components/BookingModal"));
-const Toast = lazy(() => import("./components/Toast"));
+// Lazy load modal components with better chunk names
+const BookingModal = lazy(() => import(/* webpackChunkName: "booking-modal" */ "./components/BookingModal"));
+const Toast = lazy(() => import(/* webpackChunkName: "toast" */ "./components/Toast"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+	<div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+		<div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500'></div>
+	</div>
+);
+
+// Pre-render the header text to avoid layout shifts
+const AppHeader = React.memo(() => (
+	<header className='bg-white shadow lg:relative lg:z-0 sticky top-0 z-20'>
+		<div className='max-w-7xl mx-auto py-4 lg:py-6 px-4 sm:px-6 lg:px-8'>
+			<h1
+				className='text-2xl lg:text-3xl font-bold text-gray-900'
+				style={{
+					fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+					textRendering: "optimizeLegibility",
+				}}>
+				Doctor Appointment Booking
+			</h1>
+		</div>
+	</header>
+));
+
+AppHeader.displayName = "AppHeader";
 
 function App() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,6 +43,19 @@ function App() {
 	const [hasUserInteracted, setHasUserInteracted] = useState(false);
 	const doctorsSectionRef = useRef(null);
 	const lastScrollY = useRef(0);
+
+	// Preload fonts and critical resources
+	useEffect(() => {
+		// Preload fonts
+		preloadFonts();
+		addFontDisplaySwap();
+
+		// Preload critical images
+		const firstThreeDoctors = mockDoctors.slice(0, 3);
+		firstThreeDoctors.forEach((doctor) => {
+			preloadImage(doctor.photo);
+		});
+	}, []);
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -105,11 +146,7 @@ function App() {
 
 	return (
 		<div className='min-h-screen bg-gray-100'>
-			<header className='bg-white shadow lg:relative lg:z-0 sticky top-0 z-20'>
-				<div className='max-w-7xl mx-auto py-4 lg:py-6 px-4 sm:px-6 lg:px-8'>
-					<h1 className='text-2xl lg:text-3xl font-bold text-gray-900'>Doctor Appointment Booking</h1>
-				</div>
-			</header>
+			<AppHeader />
 
 			<main className='max-w-7xl mx-auto py-6 sm:px-6 lg:px-8'>
 				<div className='px-4 py-6 sm:px-0'>
@@ -146,7 +183,7 @@ function App() {
 				</div>
 			</main>
 
-			<Suspense fallback={null}>
+			<Suspense fallback={<LoadingFallback />}>
 				{isModalOpen && (
 					<BookingModal
 						isOpen={isModalOpen}

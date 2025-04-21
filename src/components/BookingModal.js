@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getMockTimeSlots } from "../data/mockData";
 
 const BookingModal = ({ isOpen, onClose, onConfirm, doctor, bookedAppointments }) => {
@@ -8,7 +8,44 @@ const BookingModal = ({ isOpen, onClose, onConfirm, doctor, bookedAppointments }
 	const [errorMessage, setErrorMessage] = useState("");
 	const modalRef = useRef(null);
 	const timeSlotsRef = useRef(null);
-	const timeSlots = getMockTimeSlots(doctor?.id);
+
+	// Memoize time slots
+	const timeSlots = useMemo(() => getMockTimeSlots(doctor?.id), [doctor?.id]);
+
+	// Memoize grouped time slots
+	const groupedTimeSlots = useMemo(() => {
+		return timeSlots.reduce((groups, slot) => {
+			const date = slot.date;
+			if (!groups[date]) {
+				groups[date] = [];
+			}
+			groups[date].push(slot);
+			return groups;
+		}, {});
+	}, [timeSlots]);
+
+	// Memoize available dates
+	const availableDates = useMemo(() => {
+		return Object.keys(groupedTimeSlots).sort();
+	}, [groupedTimeSlots]);
+
+	// Memoize time slot booking check
+	const isTimeSlotBooked = useCallback(
+		(timeSlot) => {
+			return bookedAppointments.some(
+				(appointment) => appointment.date === timeSlot.date && appointment.time === timeSlot.time
+			);
+		},
+		[bookedAppointments]
+	);
+
+	// Memoize escape key handler
+	const handleEscape = useCallback(
+		(e) => {
+			if (e.key === "Escape") onClose();
+		},
+		[onClose]
+	);
 
 	// Reset states when modal opens or closes
 	useEffect(() => {
@@ -18,45 +55,19 @@ const BookingModal = ({ isOpen, onClose, onConfirm, doctor, bookedAppointments }
 			setAvailabilityMessage("");
 			setErrorMessage("");
 		} else {
-			// Set initial date to today when modal opens
 			const today = new Date().toISOString().split("T")[0];
 			setSelectedDate(today);
-			// Focus the modal when it opens
 			modalRef.current?.focus();
 		}
 	}, [isOpen]);
 
-	// Group time slots by date
-	const groupedTimeSlots = timeSlots.reduce((groups, slot) => {
-		const date = slot.date;
-		if (!groups[date]) {
-			groups[date] = [];
-		}
-		groups[date].push(slot);
-		return groups;
-	}, {});
-
-	// Get available dates for the date picker
-	const availableDates = Object.keys(groupedTimeSlots).sort();
-
-	// Check if a time slot is already booked
-	const isTimeSlotBooked = (timeSlot) => {
-		return bookedAppointments.some(
-			(appointment) => appointment.date === timeSlot.date && appointment.time === timeSlot.time
-		);
-	};
-
 	// Handle escape key press
 	useEffect(() => {
-		const handleEscape = (e) => {
-			if (e.key === "Escape") onClose();
-		};
-
 		if (isOpen) {
 			document.addEventListener("keydown", handleEscape);
 			return () => document.removeEventListener("keydown", handleEscape);
 		}
-	}, [isOpen, onClose]);
+	}, [isOpen, handleEscape]);
 
 	// Handle click outside modal
 	useEffect(() => {
@@ -395,4 +406,4 @@ const BookingModal = ({ isOpen, onClose, onConfirm, doctor, bookedAppointments }
 	);
 };
 
-export default BookingModal;
+export default React.memo(BookingModal);
