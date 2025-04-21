@@ -120,8 +120,8 @@ This project utilized AI assistance through Cursor IDE for:
 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/doctor-appointment-booking.git
-cd doctor-appointment-booking
+git clone https://github.com/hneudev/DoctorApp.git
+cd DoctorApp
 ```
 
 2. Install dependencies
