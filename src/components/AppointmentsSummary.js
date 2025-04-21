@@ -192,6 +192,7 @@ const AppointmentsSummary = ({ appointments, onUnschedule, isExpanded, onToggleE
 							ref={(el) => (appointmentRefs.current[index] = el)}
 							tabIndex={isMobile && !isExpanded ? -1 : 0}
 							role='listitem'
+							aria-label={`Appointment with ${appointment.doctor.name}, ${appointment.doctor.specialty}, scheduled for ${appointment.timeSlot}`}
 							className={`border rounded-lg p-4 hover:shadow-md transition-shadow outline-none
 								${focusedAppointmentIndex === index ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
 							onKeyDown={(e) => handleKeyDown(e, index)}
